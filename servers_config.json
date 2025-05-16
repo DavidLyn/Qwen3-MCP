@@ -7,6 +7,23 @@
           "@modelcontextprotocol/server-filesystem",
           "/Users/lvweiwei/ViviProj/Qwen3-MCP"
         ]
-      }
+      },
+      "weather": {
+        "command": "python",
+        "args": ["weather_server.py"]
+      },
+      "write": {
+        "command": "python",
+        "args": ["write_server.py"]
+      },
+      "PostgreSQL": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-postgres",
+          "postgresql://postgres:lvv5802001@127.0.0.1:5432/postgres"
+        ],
+        "env": {}
+      }  
     }
   }

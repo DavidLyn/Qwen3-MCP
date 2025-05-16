@@ -26,11 +26,12 @@ logging.basicConfig(
 )
 
 
-# =============================
-# 配置加载类（支持环境变量及配置文件）
-# =============================
 class Configuration:
-    """管理 MCP 客户端的环境变量和配置文件"""
+    """
+    配置加载类
+
+    管理 MCP 客户端的环境变量和配置文件
+    """
 
     def __init__(self) -> None:
         load_dotenv()
@@ -56,11 +57,12 @@ class Configuration:
             return json.load(f)
 
 
-# =============================
-# MCP 服务器客户端类
-# =============================
 class Server:
-    """管理单个 MCP 服务器连接和工具调用"""
+    """
+    MCP 服务器封装类
+
+    管理单个 MCP 服务器连接和工具调用
+    """
 
     def __init__(self, name: str, config: Dict[str, Any]) -> None:
         self.name: str = name
@@ -144,7 +146,10 @@ class Server:
                     await asyncio.sleep(delay)
                 else:
                     logging.error("Max retries reached. Failing.")
-                    raise
+
+                    # 注意：这里返回的是错误信息，而不是接着抛异常
+                    return f"Error executing tool: {e}"
+                    # raise
 
     async def cleanup(self) -> None:
         """清理服务器资源"""
@@ -156,11 +161,12 @@ class Server:
                 logging.error(f"Error during cleanup of server {self.name}: {e}")
 
 
-# =============================
-# 工具封装类
-# =============================
 class Tool:
-    """封装 MCP 返回的工具信息"""
+    """
+    工具封装类
+
+    封装 MCP 返回的工具信息
+    """
 
     def __init__(self, name: str, description: str, input_schema: Dict[str, Any]) -> None:
         self.name: str = name
@@ -184,11 +190,12 @@ Arguments:
 """
 
 
-# =============================
-# LLM 客户端封装类（使用 OpenAI SDK）
-# =============================
 class LLMClient:
-    """使用 OpenAI SDK 与大模型交互"""
+    """
+    LLM 客户端封装类（使用 OpenAI SDK)
+
+    使用 OpenAI SDK 与大模型交互
+    """
 
     def __init__(self, api_key: str, base_url: Optional[str], model: str) -> None:
         self.client = OpenAI(api_key=api_key, base_url=base_url)
@@ -205,6 +212,8 @@ class LLMClient:
             "stream": True,  # 启用流式模式
         }
         try:
+            logging.debug(f"Sending payload to LLM: {payload}")
+
             # 处理流式响应
             stream_resp = self.client.chat.completions.create(**payload)
             
@@ -309,7 +318,7 @@ class LLMClient:
                     
                     return full_response
                 else:
-                    raise Exception("响应格式不正确，缺少delta属性")
+                    raise Exception("响应格式不正确,缺少delta属性")
             else:
                 raise Exception("没有收到任何响应块")
         except (Exception, httpx.HTTPError) as e:
@@ -318,10 +327,12 @@ class LLMClient:
             raise
 
 
-# =============================
-# 多服务器 MCP 客户端类（集成配置文件、工具格式转换与 OpenAI SDK 调用）
-# =============================
 class MultiServerMCPClient:
+    """
+    多服务器 MCP 客户端类
+    
+    集成配置文件、工具格式转换与 OpenAI SDK 调用
+    """
     def __init__(self) -> None:
         """
         管理多个 MCP 服务器，并使用 OpenAI Function Calling 风格的接口调用大模型
@@ -589,7 +600,12 @@ class MultiServerMCPClient:
         if not server:
             return f"找不到服务器: {server_name}"
         resp = await server.execute_tool(tool_name, tool_args)
-        return resp.content if resp.content else "工具执行无输出"
+
+        # 如果返回的是字符串,即execute_tool调用失败时，则直接返回
+        if isinstance(resp, str):
+            return resp
+        else:
+            return resp.content if resp.content else "工具执行无输出"
 
     async def chat_loop(self) -> None:
         """多服务器 MCP + OpenAI Function Calling 客户端主循环"""
@@ -622,8 +638,6 @@ class MultiServerMCPClient:
                     content = response.choices[0].message.content
                     messages.append(response.choices[0].message.model_dump())
                 
-                # 不需要再次打印内容，因为已经在get_response中流式打印了
-                # print(f"\nAI: {content}")
             except Exception as e:
                 print(f"\n⚠️  调用过程出错: {e}")
                 logging.exception("详细错误信息")
@@ -633,10 +647,11 @@ class MultiServerMCPClient:
         await self.exit_stack.aclose()
 
 
-# =============================
-# 主函数
-# =============================
 async def main() -> None:
+    """主函数"""
+
+    logging.basicConfig(level=logging.INFO)
+    logging.info("初始化...")
     # 从配置文件加载服务器配置
     config = Configuration()
     servers_config = config.load_config("servers_config.json")
